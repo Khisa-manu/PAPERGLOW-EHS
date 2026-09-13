@@ -1,0 +1,6 @@
+{
+  "name": "FieldPulse EHS & Clock-In",
+  "description": "Production field technician clock-in and EHS reporting system with offline sync, tamper verification, and operations dashboard.",
+  "requestFramePermissions": ["camera", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
