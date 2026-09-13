@@ -41,6 +41,7 @@ interface EHSIncidentDao {
 }
 
 @Database(entities = [ClockRecord::class, EHSIncident::class], version = 1, exportSchema = false)
+@TypeConverters(Converters::class)
 abstract class FieldPulseDatabase : RoomDatabase() {
     abstract fun clockRecordDao(): ClockRecordDao
     abstract fun ehsIncidentDao(): EHSIncidentDao
