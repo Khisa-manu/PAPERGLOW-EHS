@@ -76,7 +76,9 @@ data class EHSIncident(
     val longitude: Double? = null,
     val timestamp: Long = System.currentTimeMillis(),
     val syncStatus: SyncStatus = SyncStatus.SYNCED,
-    val photoBase64: String? = null
+    val photoBase64: String? = null,
+    val status: String = "OPEN", // "OPEN", "INVESTIGATING", "RESOLVED"
+    val resolutionNotes: String = ""
 )
 
 data class Technician(
@@ -87,10 +89,33 @@ data class Technician(
     val assignedSite: String,
     val email: String = "",
     val pin: String = "1234",
-    val isClockedIn: Boolean = false
+    val isClockedIn: Boolean = false,
+    val isAdmin: Boolean = false
 ) {
     companion object {
         val SPECTRUM_TECHNICIANS = listOf(
+            Technician(
+                id = "admin-01",
+                name = "Rachel Hayes",
+                employeeCode = "SE-ADMIN-01",
+                role = "EHS Operations Director & Super Admin",
+                assignedSite = "Spectrum Global Headquarters",
+                email = "rachel.hayes@spectrum-ehs.com",
+                pin = "7842",
+                isClockedIn = true,
+                isAdmin = true
+            ),
+            Technician(
+                id = "admin-02",
+                name = "Elena Vance",
+                employeeCode = "SE-ADMIN-02",
+                role = "Regional Safety Operations Manager",
+                assignedSite = "Gulf Coast Regional Command",
+                email = "elena.vance@spectrum-ehs.com",
+                pin = "7842",
+                isClockedIn = true,
+                isAdmin = true
+            ),
             Technician(
                 id = "tech-01",
                 name = "Marcus Rodriguez",
@@ -99,7 +124,8 @@ data class Technician(
                 assignedSite = "Facility Delta - Compressor Station #4",
                 email = "m.rodriguez@spectrum-ehs.com",
                 pin = "7842",
-                isClockedIn = false
+                isClockedIn = false,
+                isAdmin = false
             ),
             Technician(
                 id = "tech-02",
@@ -109,7 +135,8 @@ data class Technician(
                 assignedSite = "Substation North - Grid #7",
                 email = "c.mendez@spectrum-ehs.com",
                 pin = "1042",
-                isClockedIn = false
+                isClockedIn = false,
+                isAdmin = false
             ),
             Technician(
                 id = "tech-03",
@@ -119,7 +146,8 @@ data class Technician(
                 assignedSite = "Spectrum Regional Safety Division",
                 email = "s.chen@spectrum-ehs.com",
                 pin = "5021",
-                isClockedIn = false
+                isClockedIn = false,
+                isAdmin = false
             ),
             Technician(
                 id = "tech-04",
@@ -129,7 +157,8 @@ data class Technician(
                 assignedSite = "Refinery Unit B - Pump House",
                 email = "d.thorne@spectrum-ehs.com",
                 pin = "3390",
-                isClockedIn = false
+                isClockedIn = false,
+                isAdmin = false
             )
         )
     }

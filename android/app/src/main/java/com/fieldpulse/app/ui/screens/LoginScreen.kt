@@ -262,22 +262,72 @@ fun LoginScreen(viewModel: FieldPulseViewModel) {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Quick Sign-In Selection for Field Personnel
-        Text(
-            text = "FAST BADGE SELECT (DEMO & TESTING)",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        // Quick Sign-In Selection for Field Personnel & Admins
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "FAST BADGE SELECT (DEMO & TESTING)",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "Tap to One-Click Sign In",
+                fontSize = 10.sp,
+                color = Amber500,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
 
         Spacer(modifier = Modifier.height(10.dp))
+
+        // 1. EHS Admins & Supervisors
+        Text(
+            text = "EHS LEADERSHIP & ADMINS",
+            fontSize = 10.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = Amber500,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
+        )
 
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Technician.SPECTRUM_TECHNICIANS.forEach { tech ->
+            Technician.SPECTRUM_TECHNICIANS.filter { it.isAdmin }.forEach { tech ->
+                QuickTechCard(
+                    tech = tech,
+                    isSelected = employeeId.equals(tech.employeeCode, ignoreCase = true),
+                    onClick = {
+                        employeeId = tech.employeeCode
+                        pin = tech.pin
+                        viewModel.clearLoginError()
+                        viewModel.quickLogin(tech)
+                    }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 2. Field Operations Technicians
+        Text(
+            text = "FIELD OPERATIONS TECHNICIANS",
+            fontSize = 10.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
+        )
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Technician.SPECTRUM_TECHNICIANS.filter { !it.isAdmin }.forEach { tech ->
                 QuickTechCard(
                     tech = tech,
                     isSelected = employeeId.equals(tech.employeeCode, ignoreCase = true),
@@ -308,9 +358,10 @@ private fun QuickTechCard(
             .clickable { onClick() }
             .then(
                 if (isSelected) Modifier.border(1.5.dp, Amber500, RoundedCornerShape(12.dp))
+                else if (tech.isAdmin) Modifier.border(1.dp, Amber500.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
                 else Modifier
             ),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+        color = if (tech.isAdmin) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
         shape = RoundedCornerShape(12.dp)
     ) {
         Row(
@@ -319,28 +370,54 @@ private fun QuickTechCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(38.dp)
                     .clip(CircleShape)
-                    .background(if (isSelected) Amber500 else MaterialTheme.colorScheme.surface),
+                    .background(if (tech.isAdmin || isSelected) Amber500 else MaterialTheme.colorScheme.surface),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = tech.name.split(" ").mapNotNull { it.firstOrNull() }.joinToString("").take(2),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp,
-                    color = if (isSelected) Color(0xFF0F172A) else MaterialTheme.colorScheme.onSurface
-                )
+                if (tech.isAdmin) {
+                    Icon(
+                        Icons.Default.AdminPanelSettings,
+                        contentDescription = "Admin",
+                        tint = Color(0xFF0F172A),
+                        modifier = Modifier.size(20.dp)
+                    )
+                } else {
+                    Text(
+                        text = tech.name.split(" ").mapNotNull { it.firstOrNull() }.joinToString("").take(2),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        color = if (isSelected) Color(0xFF0F172A) else MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = tech.name,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = tech.name,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    if (tech.isAdmin) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = Amber500.copy(alpha = 0.2f)
+                        ) {
+                            Text(
+                                text = "ADMIN",
+                                color = Amber500,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                            )
+                        }
+                    }
+                }
                 Text(
                     text = "${tech.employeeCode} • ${tech.role}",
                     fontSize = 11.sp,
@@ -351,15 +428,17 @@ private fun QuickTechCard(
             Button(
                 onClick = onClick,
                 shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surface),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (tech.isAdmin) Amber500 else MaterialTheme.colorScheme.surface
+                ),
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                 modifier = Modifier.height(32.dp)
             ) {
                 Text(
-                    text = "Tap to Sign In",
+                    text = if (tech.isAdmin) "Admin Login" else "Tap to Sign In",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = if (tech.isAdmin) Color(0xFF0F172A) else MaterialTheme.colorScheme.onSurface
                 )
             }
         }

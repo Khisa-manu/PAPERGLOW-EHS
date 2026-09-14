@@ -22,11 +22,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.fieldpulse.app.ui.FieldPulseViewModel
+import com.fieldpulse.app.ui.screens.AdminDashboardScreen
 import com.fieldpulse.app.ui.screens.ClockInScreen
 import com.fieldpulse.app.ui.screens.EHSReportScreen
 import com.fieldpulse.app.ui.screens.LoginScreen
 import com.fieldpulse.app.ui.screens.RecordsScreen
 import com.fieldpulse.app.ui.theme.FieldPulseTheme
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.AdminPanelSettings
 
 class MainActivity : ComponentActivity() {
     private val viewModel: FieldPulseViewModel by viewModels()
@@ -81,25 +84,59 @@ class MainActivity : ComponentActivity() {
                             )
                         },
                         bottomBar = {
+                            val isAdmin = uiState.currentTechnician.isAdmin
                             NavigationBar {
-                                NavigationBarItem(
-                                    selected = uiState.activeTab == 0,
-                                    onClick = { viewModel.setTab(0) },
-                                    icon = { Icon(Icons.Default.Schedule, contentDescription = "Clock In") },
-                                    label = { Text("Clock In") }
-                                )
-                                NavigationBarItem(
-                                    selected = uiState.activeTab == 1,
-                                    onClick = { viewModel.setTab(1) },
-                                    icon = { Icon(Icons.Default.Warning, contentDescription = "EHS Safety") },
-                                    label = { Text("EHS Safety") }
-                                )
-                                NavigationBarItem(
-                                    selected = uiState.activeTab == 2,
-                                    onClick = { viewModel.setTab(2) },
-                                    icon = { Icon(Icons.Default.ListAlt, contentDescription = "Records") },
-                                    label = { Text("Records") }
-                                )
+                                if (isAdmin) {
+                                    NavigationBarItem(
+                                        selected = uiState.activeTab == 0,
+                                        onClick = { viewModel.setTab(0) },
+                                        icon = { Icon(Icons.Default.Dashboard, contentDescription = "Admin Dashboard") },
+                                        label = { Text("Admin") }
+                                    )
+                                    NavigationBarItem(
+                                        selected = uiState.activeTab == 1,
+                                        onClick = { viewModel.setTab(1) },
+                                        icon = { Icon(Icons.Default.Schedule, contentDescription = "Clock In") },
+                                        label = { Text("Clock In") }
+                                    )
+                                    NavigationBarItem(
+                                        selected = uiState.activeTab == 2,
+                                        onClick = { viewModel.setTab(2) },
+                                        icon = { Icon(Icons.Default.Warning, contentDescription = "EHS Safety") },
+                                        label = { Text("EHS Safety") }
+                                    )
+                                    NavigationBarItem(
+                                        selected = uiState.activeTab == 3,
+                                        onClick = { viewModel.setTab(3) },
+                                        icon = { Icon(Icons.Default.ListAlt, contentDescription = "Records") },
+                                        label = { Text("Records") }
+                                    )
+                                } else {
+                                    NavigationBarItem(
+                                        selected = uiState.activeTab == 0,
+                                        onClick = { viewModel.setTab(0) },
+                                        icon = { Icon(Icons.Default.Schedule, contentDescription = "Clock In") },
+                                        label = { Text("Clock In") }
+                                    )
+                                    NavigationBarItem(
+                                        selected = uiState.activeTab == 1,
+                                        onClick = { viewModel.setTab(1) },
+                                        icon = { Icon(Icons.Default.Warning, contentDescription = "EHS Safety") },
+                                        label = { Text("EHS Safety") }
+                                    )
+                                    NavigationBarItem(
+                                        selected = uiState.activeTab == 2,
+                                        onClick = { viewModel.setTab(2) },
+                                        icon = { Icon(Icons.Default.ListAlt, contentDescription = "Records") },
+                                        label = { Text("Records") }
+                                    )
+                                    NavigationBarItem(
+                                        selected = uiState.activeTab == 3,
+                                        onClick = { viewModel.setTab(3) },
+                                        icon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = "Admin Portal") },
+                                        label = { Text("Admin") }
+                                    )
+                                }
                             }
                         }
                     ) { innerPadding ->
@@ -109,10 +146,23 @@ class MainActivity : ComponentActivity() {
                                 .padding(innerPadding),
                             color = MaterialTheme.colorScheme.background
                         ) {
-                            when (uiState.activeTab) {
-                                0 -> ClockInScreen(viewModel)
-                                1 -> EHSReportScreen(viewModel)
-                                2 -> RecordsScreen(viewModel)
+                            val isAdmin = uiState.currentTechnician.isAdmin
+                            if (isAdmin) {
+                                when (uiState.activeTab) {
+                                    0 -> AdminDashboardScreen(viewModel)
+                                    1 -> ClockInScreen(viewModel)
+                                    2 -> EHSReportScreen(viewModel)
+                                    3 -> RecordsScreen(viewModel)
+                                    else -> AdminDashboardScreen(viewModel)
+                                }
+                            } else {
+                                when (uiState.activeTab) {
+                                    0 -> ClockInScreen(viewModel)
+                                    1 -> EHSReportScreen(viewModel)
+                                    2 -> RecordsScreen(viewModel)
+                                    3 -> AdminDashboardScreen(viewModel)
+                                    else -> ClockInScreen(viewModel)
+                                }
                             }
                         }
                     }

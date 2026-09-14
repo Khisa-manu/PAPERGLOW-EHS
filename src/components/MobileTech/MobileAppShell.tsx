@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { ClockInWizard } from './ClockInWizard';
+import { MobileAdminView } from './MobileAdminView';
 import { 
   Wifi, 
   WifiOff, 
@@ -16,7 +17,9 @@ import {
   ChevronRight,
   Maximize2,
   Minimize2,
-  Sparkles
+  Sparkles,
+  Building2,
+  LayoutDashboard
 } from 'lucide-react';
 import { PWAInstallButton } from '../Install/PWAInstallButton';
 
@@ -33,6 +36,9 @@ export const MobileAppShell: React.FC = () => {
 
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [useBezelFrame, setUseBezelFrame] = useState(true);
+  const [mobileTab, setMobileTab] = useState<'tech' | 'admin'>(() => {
+    return (currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN') ? 'admin' : 'tech';
+  });
 
   const pendingItemForUser = syncQueue.find(item => item.technicianId === currentUser.id);
 
@@ -121,7 +127,7 @@ export const MobileAppShell: React.FC = () => {
             </div>
           )}
 
-          {/* Active Wizard Modal or Main Tech Dashboard */}
+          {/* Active Wizard Modal, Admin Mobile Dashboard, or Main Tech Dashboard */}
           {isWizardOpen ? (
             <div className="p-2 sm:p-3 flex-1 flex flex-col">
               <ClockInWizard
@@ -129,6 +135,8 @@ export const MobileAppShell: React.FC = () => {
                 onCompleted={() => setIsWizardOpen(false)}
               />
             </div>
+          ) : mobileTab === 'admin' ? (
+            <MobileAdminView onSwitchToTechMode={() => setMobileTab('tech')} />
           ) : (
             <div className="p-4 sm:p-5 flex-1 flex flex-col space-y-4">
               
@@ -338,20 +346,56 @@ export const MobileAppShell: React.FC = () => {
           )}
 
           {/* Bottom simulated navigation bar */}
-          <div className="px-6 py-3 bg-slate-950 border-t border-slate-800/80 flex items-center justify-around text-slate-400 text-xs">
-            <span className="font-bold text-amber-400 flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5" />
-              <span>Clock-In</span>
-            </span>
-            <span className="text-slate-600">•</span>
-            <span className="text-slate-400 flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>EHS Safety</span>
-            </span>
-            <span className="text-slate-600">•</span>
-            <span className="text-slate-400">
-              {currentUser.employeeId}
-            </span>
+          <div className="px-4 py-2.5 bg-slate-950 border-t border-slate-800/80 flex items-center justify-around text-xs select-none">
+            <button
+              onClick={() => {
+                setIsWizardOpen(false);
+                setMobileTab('tech');
+              }}
+              className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-colors cursor-pointer ${
+                mobileTab === 'tech' && !isWizardOpen
+                  ? 'text-amber-400 font-bold bg-slate-900'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Clock className="w-4 h-4" />
+              <span className="text-[10px]">Clock-In</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setMobileTab('tech');
+                setIsWizardOpen(true);
+              }}
+              className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-colors cursor-pointer ${
+                isWizardOpen
+                  ? 'text-amber-400 font-bold bg-slate-900'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span className="text-[10px]">EHS Safety</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setIsWizardOpen(false);
+                setMobileTab('admin');
+              }}
+              className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-colors cursor-pointer ${
+                mobileTab === 'admin'
+                  ? 'text-amber-400 font-bold bg-slate-900'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Building2 className="w-4 h-4" />
+              <span className="text-[10px] flex items-center gap-0.5">
+                <span>Admin</span>
+                {(currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN') && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                )}
+              </span>
+            </button>
           </div>
         </div>
       </div>
