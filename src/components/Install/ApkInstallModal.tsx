@@ -25,9 +25,9 @@ interface ApkInstallModalProps {
 
 const MANIFEST_CONTENT = {
   id: "/",
-  name: "FieldPulse EHS & Clock-In",
-  short_name: "FieldPulse",
-  description: "Production field technician clock-in and EHS safety reporting with offline sync",
+  name: "Spectrum Engineering EHS",
+  short_name: "Spectrum EHS",
+  description: "Spectrum Engineering EHS field technician clock-in and safety incident reporting with offline sync",
   lang: "en-US",
   theme_color: "#0f172a",
   background_color: "#0f172a",
@@ -238,10 +238,10 @@ export const ApkInstallModal: React.FC<ApkInstallModalProps> = ({ isOpen, onClos
                         Scan the QR code or open the link in Chrome on Android.
                       </li>
                       <li className="pl-1">
-                        Tap <strong>&ldquo;Add FieldPulse to Home screen&rdquo;</strong> or menu <span className="font-semibold">(&#8942;) &rarr; &ldquo;Install app&rdquo;</span>.
+                        Tap <strong>&ldquo;Add Spectrum EHS to Home screen&rdquo;</strong> or menu <span className="font-semibold">(&#8942;) &rarr; &ldquo;Install app&rdquo;</span>.
                       </li>
                       <li className="pl-1">
-                        Android compiles and installs the native <strong>FieldPulse</strong> icon.
+                        Android compiles and installs the native <strong>Spectrum Engineering EHS</strong> icon.
                       </li>
                       <li className="pl-1">
                         Tap it to launch like any native APK!

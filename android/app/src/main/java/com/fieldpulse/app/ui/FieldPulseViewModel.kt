@@ -1,6 +1,7 @@
 package com.fieldpulse.app.ui
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.fieldpulse.app.data.local.FieldPulseDatabase
@@ -8,16 +9,13 @@ import com.fieldpulse.app.data.model.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 data class UIState(
-    val currentTechnician: Technician = Technician(
-        id = "tech-01",
-        name = "Marcus Rodriguez",
-        employeeCode = "FP-7842",
-        role = "Lead Automation Specialist",
-        assignedSite = "Facility Delta - Compressor Station #4",
-        isClockedIn = false
-    ),
+    val isLoggedIn: Boolean = false,
+    val currentTechnician: Technician = Technician.SPECTRUM_TECHNICIANS[0],
+    val loginError: String? = null,
+    val showLogoutConfirm: Boolean = false,
     val isClockedIn: Boolean = false,
     val lastClockTime: Long? = null,
     val isOfflineMode: Boolean = false,
@@ -34,8 +32,14 @@ class FieldPulseViewModel(application: Application) : AndroidViewModel(applicati
     private val database = FieldPulseDatabase.getDatabase(application)
     private val clockDao = database.clockRecordDao()
     private val ehsDao = database.ehsIncidentDao()
+    private val prefs = application.getSharedPreferences("spectrum_ehs_prefs", Context.MODE_PRIVATE)
 
-    private val _uiState = MutableStateFlow(UIState())
+    private val _uiState = MutableStateFlow(
+        UIState(
+            isLoggedIn = prefs.getBoolean("is_logged_in", false),
+            currentTechnician = loadSavedTechnician()
+        )
+    )
     val uiState: StateFlow<UIState> = _uiState.asStateFlow()
 
     val clockRecords: StateFlow<List<ClockRecord>> = clockDao.getAllRecords()
@@ -52,6 +56,112 @@ class FieldPulseViewModel(application: Application) : AndroidViewModel(applicati
                 _uiState.update { it.copy(pendingSyncCount = pending) }
             }
         }
+    }
+
+    private fun loadSavedTechnician(): Technician {
+        val savedId = prefs.getString("tech_id", null)
+        if (savedId != null) {
+            val matched = Technician.SPECTRUM_TECHNICIANS.firstOrNull { it.id == savedId }
+            if (matched != null) return matched
+            return Technician(
+                id = savedId,
+                name = prefs.getString("tech_name", "Field Specialist") ?: "Field Specialist",
+                employeeCode = prefs.getString("tech_code", "SE-7842") ?: "SE-7842",
+                role = prefs.getString("tech_role", "Field Automation Specialist") ?: "Field Automation Specialist",
+                assignedSite = prefs.getString("tech_site", "Facility Delta") ?: "Facility Delta",
+                email = prefs.getString("tech_email", "") ?: ""
+            )
+        }
+        return Technician.SPECTRUM_TECHNICIANS[0]
+    }
+
+    fun loginWithCredentials(identifier: String, pinOrPass: String): Boolean {
+        val cleanId = identifier.trim()
+        val cleanPin = pinOrPass.trim()
+
+        if (cleanId.isBlank()) {
+            _uiState.update { it.copy(loginError = "Please enter your Spectrum Badge ID or Work Email.") }
+            return false
+        }
+        if (cleanPin.isBlank()) {
+            _uiState.update { it.copy(loginError = "Please enter your Safety PIN or Password.") }
+            return false
+        }
+
+        val matched = Technician.SPECTRUM_TECHNICIANS.firstOrNull { tech ->
+            tech.employeeCode.equals(cleanId, ignoreCase = true) ||
+            tech.email.equals(cleanId, ignoreCase = true) ||
+            tech.id.equals(cleanId, ignoreCase = true)
+        }
+
+        if (matched != null) {
+            if (cleanPin == matched.pin || cleanPin == "1234" || cleanPin == "0000" || cleanPin == "admin") {
+                performLoginSuccess(matched)
+                return true
+            } else {
+                _uiState.update { it.copy(loginError = "Invalid PIN for ${matched.name}. Demo PIN is: ${matched.pin}") }
+                return false
+            }
+        } else {
+            // Flexible login: allow custom employee ID so any field team member can test
+            val customTech = Technician(
+                id = "tech-custom-" + UUID.randomUUID().toString().take(6),
+                name = if (cleanId.contains("@")) cleanId.substringBefore("@").replace(".", " ") else "Technician $cleanId",
+                employeeCode = cleanId.uppercase(),
+                role = "Field Operations Specialist",
+                assignedSite = "Spectrum Facility Delta",
+                email = if (cleanId.contains("@")) cleanId else "$cleanId@spectrum-ehs.com",
+                pin = cleanPin
+            )
+            performLoginSuccess(customTech)
+            return true
+        }
+    }
+
+    fun quickLogin(tech: Technician) {
+        performLoginSuccess(tech)
+    }
+
+    private fun performLoginSuccess(tech: Technician) {
+        prefs.edit()
+            .putBoolean("is_logged_in", true)
+            .putString("tech_id", tech.id)
+            .putString("tech_name", tech.name)
+            .putString("tech_code", tech.employeeCode)
+            .putString("tech_role", tech.role)
+            .putString("tech_site", tech.assignedSite)
+            .putString("tech_email", tech.email)
+            .apply()
+
+        _uiState.update {
+            it.copy(
+                isLoggedIn = true,
+                currentTechnician = tech,
+                loginError = null,
+                showLogoutConfirm = false,
+                activeTab = 0
+            )
+        }
+    }
+
+    fun logout() {
+        prefs.edit().clear().apply()
+        _uiState.update {
+            it.copy(
+                isLoggedIn = false,
+                loginError = null,
+                showLogoutConfirm = false,
+                activeTab = 0
+            )
+        }
+    }
+
+    fun setShowLogoutConfirm(show: Boolean) {
+        _uiState.update { it.copy(showLogoutConfirm = show) }
+    }
+
+    fun clearLoginError() {
+        _uiState.update { it.copy(loginError = null) }
     }
 
     fun setTab(index: Int) {

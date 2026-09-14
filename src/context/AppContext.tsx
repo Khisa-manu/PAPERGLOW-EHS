@@ -19,6 +19,9 @@ interface AppContextType {
   setAdminTab: (tab: 'reports' | 'technicians' | 'settings' | 'audit_logs') => void;
 
   // Current User / Persona
+  isLoggedIn: boolean;
+  login: (user: User) => void;
+  logout: () => void;
   currentUser: User;
   setCurrentUser: (user: User) => void;
   allUsers: User[];
@@ -70,23 +73,81 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const LOCAL_STORAGE_QUEUE_KEY = 'fieldpulse_offline_sync_queue_v1';
 
+const DEFAULT_SPECTRUM_USERS: User[] = [
+  {
+    id: 'usr-tech-01',
+    email: 'carlos.mendez@spectrum-ehs.com',
+    fullName: 'Carlos Mendez',
+    role: 'TECHNICIAN',
+    employeeId: 'SE-1042',
+    phoneNumber: '(415) 892-4410',
+    isActive: true,
+    createdAt: '2025-01-10T08:00:00Z',
+  },
+  {
+    id: 'usr-tech-02',
+    email: 'marcus.rodriguez@spectrum-ehs.com',
+    fullName: 'Marcus Rodriguez',
+    role: 'TECHNICIAN',
+    employeeId: 'SE-7842',
+    phoneNumber: '(415) 720-3391',
+    isActive: true,
+    createdAt: '2025-01-15T08:00:00Z',
+  },
+  {
+    id: 'usr-tech-03',
+    email: 'sarah.chen@spectrum-ehs.com',
+    fullName: 'Sarah Chen',
+    role: 'TECHNICIAN',
+    employeeId: 'SE-5021',
+    phoneNumber: '(415) 441-9982',
+    isActive: true,
+    createdAt: '2025-02-01T08:00:00Z',
+  },
+  {
+    id: 'usr-admin-01',
+    email: 'rachel.hayes@spectrum-ehs.com',
+    fullName: 'Rachel Hayes',
+    role: 'SUPER_ADMIN',
+    employeeId: 'SE-ADMIN-01',
+    phoneNumber: '(415) 555-0199',
+    isActive: true,
+    createdAt: '2024-11-01T08:00:00Z',
+  }
+];
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activeView, setActiveView] = useState<'mobile_tech' | 'admin_dashboard'>('mobile_tech');
   const [adminTab, setAdminTab] = useState<'reports' | 'technicians' | 'settings' | 'audit_logs'>('reports');
   
-  // Default user is Carlos Mendez (Tech 1)
-  const [currentUser, setCurrentUser] = useState<User>({
-    id: 'usr-tech-01',
-    email: 'carlos.mendez@fieldpulse.com',
-    fullName: 'Carlos Mendez',
-    role: 'TECHNICIAN',
-    employeeId: 'EMP-1042',
-    phoneNumber: '(415) 892-4410',
-    isActive: true,
-    createdAt: '2025-01-10T08:00:00Z',
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    return localStorage.getItem('spectrum_is_logged_in') !== 'false';
   });
 
-  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [currentUser, setCurrentUser] = useState<User>(() => {
+    const savedUserId = localStorage.getItem('spectrum_user_id');
+    const matched = DEFAULT_SPECTRUM_USERS.find(u => u.id === savedUserId);
+    return matched || DEFAULT_SPECTRUM_USERS[0];
+  });
+
+  const [allUsers, setAllUsers] = useState<User[]>(DEFAULT_SPECTRUM_USERS);
+
+  const login = (user: User) => {
+    setCurrentUser(user);
+    setIsLoggedIn(true);
+    localStorage.setItem('spectrum_is_logged_in', 'true');
+    localStorage.setItem('spectrum_user_id', user.id);
+    if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
+      setActiveView('admin_dashboard');
+    } else {
+      setActiveView('mobile_tech');
+    }
+  };
+
+  const logout = () => {
+    setIsLoggedIn(false);
+    localStorage.setItem('spectrum_is_logged_in', 'false');
+  };
   const [isNetworkOnline, setIsNetworkOnline] = useState<boolean>(true);
   const [syncQueue, setSyncQueue] = useState<OfflineSyncQueueItem[]>(() => {
     try {
@@ -485,6 +546,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setActiveView,
         adminTab,
         setAdminTab,
+        isLoggedIn,
+        login,
+        logout,
         currentUser,
         setCurrentUser,
         allUsers,

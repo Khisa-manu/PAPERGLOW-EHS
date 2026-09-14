@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "FieldPulse EHS & Clock-In",
-  "short_name": "FieldPulse",
-  "description": "Production field technician clock-in and EHS safety reporting with offline sync",
+  "name": "Spectrum Engineering EHS",
+  "short_name": "Spectrum EHS",
+  "description": "Spectrum Engineering EHS field technician clock-in and safety incident management with offline sync",
   "lang": "en-US",
   "theme_color": "#0f172a",
   "background_color": "#0f172a",

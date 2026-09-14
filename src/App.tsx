@@ -3,9 +3,14 @@ import { AppProvider, useApp } from './context/AppContext';
 import { TopBar } from './components/TopBar';
 import { MobileAppShell } from './components/MobileTech/MobileAppShell';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
+import { WebLoginScreen } from './components/Login/WebLoginScreen';
 
 const AppContent: React.FC = () => {
-  const { activeView } = useApp();
+  const { activeView, isLoggedIn } = useApp();
+
+  if (!isLoggedIn) {
+    return <WebLoginScreen />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans">

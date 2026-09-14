@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "FieldPulse"
+rootProject.name = "SpectrumEngineeringEHS"
 include(":app")

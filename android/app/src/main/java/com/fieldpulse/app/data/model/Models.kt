@@ -85,5 +85,52 @@ data class Technician(
     val employeeCode: String,
     val role: String,
     val assignedSite: String,
+    val email: String = "",
+    val pin: String = "1234",
     val isClockedIn: Boolean = false
-)
+) {
+    companion object {
+        val SPECTRUM_TECHNICIANS = listOf(
+            Technician(
+                id = "tech-01",
+                name = "Marcus Rodriguez",
+                employeeCode = "SE-7842",
+                role = "Lead Automation Specialist",
+                assignedSite = "Facility Delta - Compressor Station #4",
+                email = "m.rodriguez@spectrum-ehs.com",
+                pin = "7842",
+                isClockedIn = false
+            ),
+            Technician(
+                id = "tech-02",
+                name = "Carlos Mendez",
+                employeeCode = "SE-1042",
+                role = "High Voltage Field Specialist",
+                assignedSite = "Substation North - Grid #7",
+                email = "c.mendez@spectrum-ehs.com",
+                pin = "1042",
+                isClockedIn = false
+            ),
+            Technician(
+                id = "tech-03",
+                name = "Sarah Chen",
+                employeeCode = "SE-5021",
+                role = "EHS Compliance Officer",
+                assignedSite = "Spectrum Regional Safety Division",
+                email = "s.chen@spectrum-ehs.com",
+                pin = "5021",
+                isClockedIn = false
+            ),
+            Technician(
+                id = "tech-04",
+                name = "David Thorne",
+                employeeCode = "SE-3390",
+                role = "Mechanical Systems Inspector",
+                assignedSite = "Refinery Unit B - Pump House",
+                email = "d.thorne@spectrum-ehs.com",
+                pin = "3390",
+                isClockedIn = false
+            )
+        )
+    }
+}

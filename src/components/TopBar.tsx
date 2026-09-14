@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   Smartphone, 
@@ -10,7 +10,8 @@ import {
   ShieldCheck,
   UserCheck,
   AlertTriangle,
-  Clock
+  Clock,
+  LogOut
 } from 'lucide-react';
 import { PWAInstallButton } from './Install/PWAInstallButton';
 
@@ -26,8 +27,11 @@ export const TopBar: React.FC = () => {
     syncQueue,
     isSyncing,
     triggerSync,
-    resetDemoData
+    resetDemoData,
+    logout
   } = useApp();
+
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 bg-slate-900 text-white border-b border-slate-800 shadow-md">
@@ -37,26 +41,26 @@ export const TopBar: React.FC = () => {
           {/* Logo & Product Identity */}
           <div className="flex items-center gap-4 sm:gap-6">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-black text-base shadow-sm">
-                FP
+              <div className="w-9 h-9 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-black text-sm tracking-tight shadow-sm">
+                SE
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-heading font-extrabold text-white text-lg tracking-tight">
-                    FieldPulse
+                  <span className="font-heading font-extrabold text-white text-base sm:text-lg tracking-tight">
+                    Spectrum Engineering EHS
                   </span>
-                  <span className="text-[10px] font-mono uppercase font-bold tracking-widest bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded">
-                    EHS & Clock-In
+                  <span className="hidden sm:inline-block text-[10px] font-mono uppercase font-bold tracking-widest bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded">
+                    Field Safety
                   </span>
                 </div>
                 <span className="text-[11px] text-slate-400 font-medium block leading-none">
-                  Production Field Operations & Audit Engine
+                  Field Operations, Clock-In & Safety Engine
                 </span>
               </div>
             </div>
 
             {/* View Switcher: Mobile Tech App vs Admin Dashboard */}
-            <div className="hidden sm:flex items-center bg-slate-800/80 p-1 rounded-xl border border-slate-700">
+            <div className="hidden md:flex items-center bg-slate-800/80 p-1 rounded-xl border border-slate-700">
               <button
                 onClick={() => setActiveView('mobile_tech')}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
@@ -86,14 +90,14 @@ export const TopBar: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Controls: Offline Simulator, Sync Queue, Persona */}
+          {/* Right Controls: Offline Simulator, Sync Queue, Persona, Logout */}
           <div className="flex items-center gap-2 sm:gap-3">
             
             {/* OFFLINE NETWORK SIMULATOR TOGGLE */}
             <button
               onClick={toggleNetworkSimulation}
               title={isNetworkOnline ? 'Click to simulate offline field dead zone' : 'Click to restore cellular connectivity'}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
                 isNetworkOnline
                   ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40 hover:bg-emerald-900/80'
                   : 'bg-rose-950 text-rose-300 border-rose-500 animate-pulse shadow-sm shadow-rose-950'
@@ -102,13 +106,12 @@ export const TopBar: React.FC = () => {
               {isNetworkOnline ? (
                 <>
                   <Wifi className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="hidden md:inline">Online (Live API)</span>
-                  <span className="md:hidden">Online</span>
+                  <span className="hidden xl:inline">Online</span>
                 </>
               ) : (
                 <>
                   <WifiOff className="w-3.5 h-3.5 text-rose-400" />
-                  <span className="font-extrabold text-rose-300">SIMULATING OFFLINE</span>
+                  <span className="font-extrabold text-rose-300 text-[11px]">OFFLINE</span>
                 </>
               )}
             </button>
@@ -118,7 +121,7 @@ export const TopBar: React.FC = () => {
               <button
                 onClick={triggerSync}
                 disabled={!isNetworkOnline || isSyncing}
-                title="Pending offline reports queued in local SQLite storage"
+                title="Pending offline reports queued in local storage"
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold border cursor-pointer ${
                   isNetworkOnline
                     ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 hover:bg-amber-500/30'
@@ -126,7 +129,8 @@ export const TopBar: React.FC = () => {
                 }`}
               >
                 <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-amber-400' : ''}`} />
-                <span>{syncQueue.length} Pending Sync</span>
+                <span className="hidden sm:inline">{syncQueue.length} Pending</span>
+                <span className="sm:hidden">{syncQueue.length}</span>
               </button>
             )}
 
@@ -139,7 +143,6 @@ export const TopBar: React.FC = () => {
                   const selected = allUsers.find(u => u.id === e.target.value);
                   if (selected) {
                     setCurrentUser(selected);
-                    // if selecting admin, auto switch to admin dashboard; if tech, switch to mobile tech
                     if (selected.role === 'ADMIN' || selected.role === 'SUPER_ADMIN') {
                       setActiveView('admin_dashboard');
                     } else {
@@ -147,7 +150,7 @@ export const TopBar: React.FC = () => {
                     }
                   }
                 }}
-                className="bg-transparent text-white font-medium text-xs focus:outline-hidden cursor-pointer"
+                className="bg-transparent text-white font-medium text-xs focus:outline-hidden cursor-pointer max-w-[130px] sm:max-w-none truncate"
               >
                 <optgroup label="Field Technicians">
                   {allUsers
@@ -170,6 +173,16 @@ export const TopBar: React.FC = () => {
               </select>
             </div>
 
+            {/* Log Out Button */}
+            <button
+              onClick={() => setShowLogoutConfirm(true)}
+              title="Log Out of Spectrum Engineering EHS"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-rose-950/80 hover:text-rose-300 hover:border-rose-700/60 border border-slate-700 text-slate-300 transition-all cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Log Out</span>
+            </button>
+
             {/* PWA / Android APK Launch Button */}
             <PWAInstallButton />
 
@@ -177,7 +190,7 @@ export const TopBar: React.FC = () => {
             <button
               onClick={resetDemoData}
               title="Reset system state to clean seed data"
-              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer hidden sm:block"
             >
               <RotateCcw className="w-4 h-4" />
             </button>
@@ -185,7 +198,7 @@ export const TopBar: React.FC = () => {
         </div>
 
         {/* Mobile Sub-bar toggle */}
-        <div className="sm:hidden flex items-center justify-around py-2 border-t border-slate-800 text-xs">
+        <div className="md:hidden flex items-center justify-around py-2 border-t border-slate-800 text-xs">
           <button
             onClick={() => setActiveView('mobile_tech')}
             className={`flex items-center gap-1.5 py-1 px-3 rounded-md font-semibold cursor-pointer ${
@@ -206,6 +219,45 @@ export const TopBar: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
+                <LogOut className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Log Out of Spectrum EHS?</h3>
+                <p className="text-xs text-slate-400 mt-0.5">End active session for {currentUser.fullName}</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Are you sure you want to log out? Any queued offline reports and local timecards will remain securely stored on this browser.
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowLogoutConfirm(false);
+                  logout();
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 transition-colors shadow-sm cursor-pointer"
+              >
+                Confirm Log Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 };
