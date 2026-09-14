@@ -32,11 +32,15 @@ fun AdminDashboardScreen(viewModel: FieldPulseViewModel) {
     val uiState by viewModel.uiState.collectAsState()
     val clockRecords by viewModel.clockRecords.collectAsState()
     val ehsIncidents by viewModel.ehsIncidents.collectAsState()
+    val technicians by viewModel.technicians.collectAsState()
+    val activeTechs = if (technicians.isNotEmpty()) technicians else Technician.SPECTRUM_TECHNICIANS
 
-    var selectedSection by remember { mutableStateOf(0) } // 0: Personnel, 1: Hazard Triage, 2: Compliance
+    var selectedSection by remember { mutableStateOf(0) } // 0: Workforce Directory, 1: Clock-Ins, 2: Hazard Triage, 3: Site Controls
     var hazardFilter by remember { mutableStateOf<String>("ALL") }
     var selectedIncidentForReview by remember { mutableStateOf<EHSIncident?>(null) }
     var showMusterSuccessDialog by remember { mutableStateOf(false) }
+    var showAddTechDialog by remember { mutableStateOf(false) }
+    var techToDelete by remember { mutableStateOf<Technician?>(null) }
 
     val activeClockIns = clockRecords.filter { it.type == "CLOCK_IN" }
     val criticalIncidents = ehsIncidents.filter { it.riskLevel == RiskLevel.CRITICAL_STOP_WORK }
@@ -237,7 +241,7 @@ fun AdminDashboardScreen(viewModel: FieldPulseViewModel) {
             }
         }
 
-        // 3. Section Segment Control (Personnel Roster vs Hazard Triage vs Controls)
+        // 3. Section Segment Control (Workforce Roster vs Clock-Ins vs Hazards vs Controls)
         item {
             TabRow(
                 selectedTabIndex = selectedSection,
@@ -250,32 +254,44 @@ fun AdminDashboardScreen(viewModel: FieldPulseViewModel) {
                     onClick = { selectedSection = 0 },
                     text = {
                         Text(
-                            text = "Personnel (${activeClockIns.size})",
-                            fontSize = 12.sp,
+                            text = "Roster (${activeTechs.size})",
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
                     },
-                    icon = { Icon(Icons.Default.People, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                    icon = { Icon(Icons.Default.Group, contentDescription = null, modifier = Modifier.size(16.dp)) }
                 )
                 Tab(
                     selected = selectedSection == 1,
                     onClick = { selectedSection = 1 },
                     text = {
                         Text(
-                            text = "Hazards (${ehsIncidents.size})",
-                            fontSize = 12.sp,
+                            text = "Clock-Ins (${activeClockIns.size})",
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
                     },
-                    icon = { Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                    icon = { Icon(Icons.Default.Schedule, contentDescription = null, modifier = Modifier.size(16.dp)) }
                 )
                 Tab(
                     selected = selectedSection == 2,
                     onClick = { selectedSection = 2 },
                     text = {
                         Text(
-                            text = "Site Controls",
-                            fontSize = 12.sp,
+                            text = "Hazards (${ehsIncidents.size})",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    icon = { Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                )
+                Tab(
+                    selected = selectedSection == 3,
+                    onClick = { selectedSection = 3 },
+                    text = {
+                        Text(
+                            text = "Controls",
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
                     },
@@ -284,8 +300,82 @@ fun AdminDashboardScreen(viewModel: FieldPulseViewModel) {
             }
         }
 
-        // 4. TAB CONTENT 0: Active Personnel Roster
+        // 4. TAB CONTENT 0: Field Workforce Directory & Roster Management (Add & Remove)
         if (selectedSection == 0) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "FIELD WORKFORCE ROSTER",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "${activeTechs.size} Registered Field Technicians",
+                            fontSize = 10.sp,
+                            color = Color(0xFF10B981),
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Button(
+                        onClick = { showAddTechDialog = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = Amber500),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.PersonAdd,
+                            contentDescription = null,
+                            tint = Color(0xFF0F172A),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Add Tech",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0F172A)
+                        )
+                    }
+                }
+            }
+
+            if (activeTechs.isEmpty()) {
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(Icons.Default.PersonOff, contentDescription = null, modifier = Modifier.size(36.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(text = "No technicians in workforce roster", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(text = "Tap 'Add Tech' above to register new field technicians.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            } else {
+                items(activeTechs) { tech ->
+                    AdminTechnicianCard(
+                        tech = tech,
+                        onDelete = { techToDelete = tech }
+                    )
+                }
+            }
+        }
+
+        // 5. TAB CONTENT 1: Active Personnel Live Clock-Ins
+        if (selectedSection == 1) {
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -333,8 +423,8 @@ fun AdminDashboardScreen(viewModel: FieldPulseViewModel) {
             }
         }
 
-        // 5. TAB CONTENT 1: Hazard & Incident Triage
-        if (selectedSection == 1) {
+        // 6. TAB CONTENT 2: Hazard & Incident Triage
+        if (selectedSection == 2) {
             item {
                 // Filter chips
                 LazyRow(
@@ -397,8 +487,8 @@ fun AdminDashboardScreen(viewModel: FieldPulseViewModel) {
             }
         }
 
-        // 6. TAB CONTENT 2: Site & Safety Controls
-        if (selectedSection == 2) {
+        // 7. TAB CONTENT 3: Site & Safety Controls
+        if (selectedSection == 3) {
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -528,6 +618,297 @@ fun AdminDashboardScreen(viewModel: FieldPulseViewModel) {
                 }
             }
         )
+    }
+
+    // Modal / Dialog for adding a new field technician
+    if (showAddTechDialog) {
+        var newName by remember { mutableStateOf("") }
+        var newCode by remember { mutableStateOf("") }
+        var newRole by remember { mutableStateOf("") }
+        var newSite by remember { mutableStateOf("Spectrum Facility Delta") }
+        var newEmail by remember { mutableStateOf("") }
+        var newPin by remember { mutableStateOf("1234") }
+        var newIsAdmin by remember { mutableStateOf(false) }
+        var addError by remember { mutableStateOf<String?>(null) }
+
+        AlertDialog(
+            onDismissRequest = { showAddTechDialog = false },
+            icon = {
+                Icon(
+                    Icons.Default.PersonAdd,
+                    contentDescription = null,
+                    tint = Amber500,
+                    modifier = Modifier.size(28.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "Onboard Field Technician",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = newName,
+                        onValueChange = { newName = it; addError = null },
+                        label = { Text("Full Legal Name *") },
+                        placeholder = { Text("e.g. David Thorne") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = newCode,
+                            onValueChange = { newCode = it.uppercase(); addError = null },
+                            label = { Text("Badge ID *") },
+                            placeholder = { Text("SE-4029") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f)
+                        )
+                        OutlinedTextField(
+                            value = newPin,
+                            onValueChange = { newPin = it },
+                            label = { Text("PIN") },
+                            placeholder = { Text("1234") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    OutlinedTextField(
+                        value = newEmail,
+                        onValueChange = { newEmail = it; addError = null },
+                        label = { Text("Work Email *") },
+                        placeholder = { Text("d.thorne@spectrum-ehs.com") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = newRole,
+                        onValueChange = { newRole = it },
+                        label = { Text("Job Role / Trade") },
+                        placeholder = { Text("Field Automation Specialist") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = newSite,
+                        onValueChange = { newSite = it },
+                        label = { Text("Assigned Site") },
+                        placeholder = { Text("Spectrum Facility Delta") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = newIsAdmin,
+                            onCheckedChange = { newIsAdmin = it }
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Grant Admin / Supervisor Access",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    if (addError != null) {
+                        Text(
+                            text = addError!!,
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newName.isBlank()) {
+                            addError = "Please enter full name."
+                            return@Button
+                        }
+                        if (newCode.isBlank()) {
+                            addError = "Please enter an employee badge ID."
+                            return@Button
+                        }
+                        if (newEmail.isBlank()) {
+                            addError = "Please enter a work email address."
+                            return@Button
+                        }
+                        viewModel.addTechnician(
+                            name = newName,
+                            employeeCode = newCode,
+                            role = if (newRole.isNotBlank()) newRole else "Field Specialist",
+                            assignedSite = if (newSite.isNotBlank()) newSite else "Spectrum Facility Delta",
+                            email = newEmail,
+                            pin = if (newPin.isNotBlank()) newPin else "1234",
+                            isAdmin = newIsAdmin
+                        )
+                        showAddTechDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Amber500)
+                ) {
+                    Text("Add Technician", color = Color(0xFF0F172A), fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showAddTechDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Confirmation dialog for removing a technician
+    if (techToDelete != null) {
+        val tech = techToDelete!!
+        AlertDialog(
+            onDismissRequest = { techToDelete = null },
+            icon = {
+                Icon(
+                    Icons.Default.DeleteOutline,
+                    contentDescription = null,
+                    tint = Color(0xFFF43F5E),
+                    modifier = Modifier.size(28.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "Remove Field Technician?",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to remove ${tech.name} (${tech.employeeCode}) from the active field roster? Their mobile access PIN will be revoked immediately.",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.removeTechnician(tech.id)
+                        techToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF43F5E))
+                ) {
+                    Text("Remove", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { techToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun AdminTechnicianCard(
+    tech: Technician,
+    onDelete: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(if (tech.isAdmin) Amber500 else Color(0xFF334155)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = tech.name.split(" ").mapNotNull { it.firstOrNull() }.joinToString("").take(2),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        color = if (tech.isAdmin) Color(0xFF0F172A) else Color.White
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = tech.name,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        if (tech.isAdmin) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = Amber500.copy(alpha = 0.2f)
+                            ) {
+                                Text(
+                                    text = "ADMIN",
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Amber500,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                )
+                            }
+                        }
+                    }
+                    Text(
+                        text = "${tech.employeeCode} • ${tech.role}",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "${tech.assignedSite} • ${tech.email}",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+            }
+
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    Icons.Default.DeleteOutline,
+                    contentDescription = "Remove technician",
+                    tint = Color(0xFFF43F5E),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
     }
 }
 

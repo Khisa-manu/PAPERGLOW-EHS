@@ -34,6 +34,8 @@ import com.fieldpulse.app.ui.theme.Amber500
 @Composable
 fun LoginScreen(viewModel: FieldPulseViewModel) {
     val uiState by viewModel.uiState.collectAsState()
+    val allTechs by viewModel.technicians.collectAsState()
+    val activeTechList = if (allTechs.isNotEmpty()) allTechs else Technician.SPECTRUM_TECHNICIANS
     val focusManager = LocalFocusManager.current
 
     var employeeId by remember { mutableStateOf("SE-7842") }
@@ -298,7 +300,7 @@ fun LoginScreen(viewModel: FieldPulseViewModel) {
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Technician.SPECTRUM_TECHNICIANS.filter { it.isAdmin }.forEach { tech ->
+            activeTechList.filter { it.isAdmin }.forEach { tech ->
                 QuickTechCard(
                     tech = tech,
                     isSelected = employeeId.equals(tech.employeeCode, ignoreCase = true),
@@ -327,7 +329,7 @@ fun LoginScreen(viewModel: FieldPulseViewModel) {
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Technician.SPECTRUM_TECHNICIANS.filter { !it.isAdmin }.forEach { tech ->
+            activeTechList.filter { !it.isAdmin }.forEach { tech ->
                 QuickTechCard(
                     tech = tech,
                     isSelected = employeeId.equals(tech.employeeCode, ignoreCase = true),

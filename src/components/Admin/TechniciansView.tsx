@@ -11,13 +11,17 @@ import {
   XCircle, 
   Search,
   KeyRound,
-  X
+  X,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 
 export const TechniciansView: React.FC = () => {
-  const { allUsers, createTechnician, updateTechnician, settings } = useApp();
+  const { allUsers, createTechnician, updateTechnician, deleteTechnician, settings } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [deletingTech, setDeletingTech] = useState<User | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // New Tech Form State
   const [fullName, setFullName] = useState('');
@@ -159,17 +163,71 @@ export const TechniciansView: React.FC = () => {
               <span className="text-[11px] text-slate-400">
                 Added: {tech.createdAt.substring(0, 10)}
               </span>
-              <button
-                onClick={() => alert(`Password reset instructions simulated for ${tech.email}`)}
-                className="text-slate-500 hover:text-slate-800 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
-              >
-                <KeyRound className="w-3 h-3" />
-                <span>Reset PIN</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => alert(`Password reset instructions simulated for ${tech.email}`)}
+                  className="text-slate-500 hover:text-slate-800 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  <KeyRound className="w-3 h-3" />
+                  <span>Reset PIN</span>
+                </button>
+                <button
+                  onClick={() => setDeletingTech(tech)}
+                  className="text-rose-600 hover:text-rose-800 text-[11px] font-bold flex items-center gap-1 cursor-pointer px-2 py-1 rounded-lg hover:bg-rose-50"
+                  title="Remove technician from active roster"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>Remove</span>
+                </button>
+              </div>
             </div>
           </div>
         ))}
       </div>
+
+      {/* REMOVE TECHNICIAN CONFIRMATION MODAL */}
+      {deletingTech && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-xs p-4">
+          <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+
+            <div className="text-center space-y-1">
+              <h3 className="font-heading font-bold text-base text-slate-900">
+                Remove Field Technician?
+              </h3>
+              <p className="text-xs text-slate-500">
+                Are you sure you want to remove <strong className="text-slate-800">{deletingTech.fullName}</strong> ({deletingTech.employeeId})? This will immediately revoke their mobile app badge access and remove them from active field operations.
+              </p>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setDeletingTech(null)}
+                className="px-4 py-2 rounded-xl text-slate-600 font-bold hover:bg-slate-100 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={async () => {
+                  setIsDeleting(true);
+                  await deleteTechnician(deletingTech.id);
+                  setIsDeleting(false);
+                  setDeletingTech(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold shadow-xs cursor-pointer disabled:opacity-50"
+              >
+                {isDeleting ? 'Removing...' : 'Confirm Removal'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ADD TECHNICIAN MODAL */}
       {isAddModalOpen && (

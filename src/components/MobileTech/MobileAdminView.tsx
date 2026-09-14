@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { User } from '../../types';
 import { 
   ShieldCheck, 
   Users, 
@@ -15,7 +16,13 @@ import {
   Filter,
   Check,
   Building2,
-  HardHat
+  HardHat,
+  UserPlus,
+  Trash2,
+  X,
+  Phone,
+  Mail,
+  UserCheck
 } from 'lucide-react';
 
 interface MobileAdminViewProps {
@@ -30,16 +37,68 @@ export const MobileAdminView: React.FC<MobileAdminViewProps> = ({ onSwitchToTech
     syncQueue, 
     triggerSync, 
     isSyncing, 
-    isNetworkOnline 
+    isNetworkOnline,
+    createTechnician,
+    deleteTechnician
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'roster' | 'reports' | 'controls'>('roster');
+  const [activeTab, setActiveTab] = useState<'roster' | 'technicians' | 'reports' | 'controls'>('roster');
   const [filterType, setFilterType] = useState<'ALL' | 'ON_TIME' | 'LATE'>('ALL');
   const [musterAlertActive, setMusterAlertActive] = useState(false);
+
+  // Add & Remove Tech State
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [deletingTech, setDeletingTech] = useState<User | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // New Tech Form Inputs
+  const [newFullName, setNewFullName] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newEmployeeId, setNewEmployeeId] = useState('');
+  const [newPhone, setNewPhone] = useState('');
+  const [newShiftTime, setNewShiftTime] = useState('');
 
   const activeTechs = allUsers.filter(u => u.role !== 'SUPER_ADMIN');
   const onTimeCount = reports.filter(r => r.lateStatus === 'ON_TIME' || r.lateStatus === 'EXCUSED').length;
   const lateCount = reports.filter(r => r.lateStatus === 'LATE').length;
+
+  const handleCreateTech = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFullName || !newEmail || !newEmployeeId) {
+      setFormError('Please fill out all required fields.');
+      return;
+    }
+    setFormError(null);
+    setIsSubmitting(true);
+    const success = await createTechnician({
+      fullName: newFullName.trim(),
+      email: newEmail.trim().toLowerCase(),
+      employeeId: newEmployeeId.trim().toUpperCase(),
+      phoneNumber: newPhone.trim(),
+      customExpectedStartTime: newShiftTime || undefined,
+    });
+    setIsSubmitting(false);
+    if (success) {
+      setNewFullName('');
+      setNewEmail('');
+      setNewEmployeeId('');
+      setNewPhone('');
+      setNewShiftTime('');
+      setIsAddModalOpen(false);
+    } else {
+      setFormError('Failed to create technician. Employee ID or Email may already exist.');
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingTech) return;
+    setIsDeleting(true);
+    await deleteTechnician(deletingTech.id);
+    setIsDeleting(false);
+    setDeletingTech(null);
+  };
 
   const filteredReports = reports.filter(r => {
     if (filterType === 'ON_TIME') return r.lateStatus === 'ON_TIME' || r.lateStatus === 'EXCUSED';
@@ -116,27 +175,37 @@ export const MobileAdminView: React.FC<MobileAdminViewProps> = ({ onSwitchToTech
       <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
         <button
           onClick={() => setActiveTab('roster')}
-          className={`flex-1 py-1.5 px-2 rounded-lg font-bold transition-all ${
+          className={`flex-1 py-1.5 px-1.5 rounded-lg font-bold transition-all text-center ${
             activeTab === 'roster'
               ? 'bg-amber-500 text-slate-950 shadow-sm'
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          Live Roster ({reports.length})
+          Roster ({reports.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('technicians')}
+          className={`flex-1 py-1.5 px-1.5 rounded-lg font-bold transition-all text-center ${
+            activeTab === 'technicians'
+              ? 'bg-amber-500 text-slate-950 shadow-sm'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          Techs ({activeTechs.length})
         </button>
         <button
           onClick={() => setActiveTab('reports')}
-          className={`flex-1 py-1.5 px-2 rounded-lg font-bold transition-all ${
+          className={`flex-1 py-1.5 px-1.5 rounded-lg font-bold transition-all text-center ${
             activeTab === 'reports'
               ? 'bg-amber-500 text-slate-950 shadow-sm'
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          Audit Reports
+          Audits
         </button>
         <button
           onClick={() => setActiveTab('controls')}
-          className={`flex-1 py-1.5 px-2 rounded-lg font-bold transition-all ${
+          className={`flex-1 py-1.5 px-1.5 rounded-lg font-bold transition-all text-center ${
             activeTab === 'controls'
               ? 'bg-amber-500 text-slate-950 shadow-sm'
               : 'text-slate-400 hover:text-white'
@@ -202,6 +271,84 @@ export const MobileAdminView: React.FC<MobileAdminViewProps> = ({ onSwitchToTech
             {reports.length === 0 && (
               <div className="text-center py-8 text-slate-500 text-xs">
                 No active clock-ins recorded yet for today.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB: Field Technicians Workforce Management */}
+      {activeTab === 'technicians' && (
+        <div className="space-y-3 flex-1">
+          <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold px-1">
+            <span>FIELD WORKFORCE DIRECTORY</span>
+            <button
+              onClick={() => {
+                setFormError(null);
+                setIsAddModalOpen(true);
+              }}
+              className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] flex items-center gap-1 shadow-sm transition-colors cursor-pointer"
+            >
+              <UserPlus className="w-3 h-3" />
+              <span>Add Tech</span>
+            </button>
+          </div>
+
+          <div className="space-y-2 overflow-y-auto max-h-[340px] pr-1">
+            {activeTechs.map((tech) => (
+              <div
+                key={tech.id}
+                className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 space-y-2"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-slate-800 text-amber-400 border border-slate-700 flex items-center justify-center font-bold text-xs">
+                      {tech.fullName.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <div>
+                      <div className="font-bold text-xs text-white flex items-center gap-1.5">
+                        <span>{tech.fullName}</span>
+                        {tech.isActive ? (
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Active"></span>
+                        ) : (
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-500" title="Inactive"></span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-slate-400 font-mono flex items-center gap-2">
+                        <span className="text-amber-400 font-semibold">{tech.employeeId || 'ID PENDING'}</span>
+                        {tech.customExpectedStartTime && (
+                          <span className="text-slate-500">Shift: {tech.customExpectedStartTime}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Remove Tech Action */}
+                  <button
+                    onClick={() => setDeletingTech(tech)}
+                    className="p-2 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                    title="Remove field technician"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="pt-2 border-t border-slate-800/80 grid grid-cols-2 gap-2 text-[10px] text-slate-400">
+                  <div className="truncate flex items-center gap-1">
+                    <Mail className="w-2.5 h-2.5 text-slate-500 shrink-0" />
+                    <span className="truncate">{tech.email}</span>
+                  </div>
+                  <div className="truncate flex items-center gap-1">
+                    <Phone className="w-2.5 h-2.5 text-slate-500 shrink-0" />
+                    <span className="truncate">{tech.phoneNumber || 'No phone'}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {activeTechs.length === 0 && (
+              <div className="text-center py-8 text-slate-500 text-xs">
+                No field technicians found in workforce roster.
               </div>
             )}
           </div>
@@ -300,6 +447,153 @@ export const MobileAdminView: React.FC<MobileAdminViewProps> = ({ onSwitchToTech
 
           <div className="p-3 bg-slate-900/60 border border-slate-800 rounded-xl text-[11px] text-slate-400">
             <strong>Audit Status:</strong> Spectrum EHS is operating under high-concurrency offline sync protocol.
+          </div>
+        </div>
+      )}
+
+      {/* MOBILE ADD TECHNICIAN MODAL */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-4">
+          <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                  <UserPlus className="w-4 h-4" />
+                </div>
+                <h3 className="font-heading font-bold text-sm text-white">
+                  Add Field Technician
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsAddModalOpen(false)}
+                className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateTech} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Full Legal Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. David Thorne"
+                  value={newFullName}
+                  onChange={(e) => setNewFullName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-hidden focus:border-amber-500 font-sans"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-bold text-slate-300 mb-1">Employee Badge *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. SE-4029"
+                    value={newEmployeeId}
+                    onChange={(e) => setNewEmployeeId(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-hidden focus:border-amber-500 font-mono uppercase"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-300 mb-1">Shift Start</label>
+                  <input
+                    type="time"
+                    value={newShiftTime}
+                    onChange={(e) => setNewShiftTime(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-hidden focus:border-amber-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Work Email *</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="d.thorne@spectrum-ehs.com"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-hidden focus:border-amber-500 font-sans"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Phone Number</label>
+                <input
+                  type="tel"
+                  placeholder="(415) 555-0182"
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-hidden focus:border-amber-500 font-sans"
+                />
+              </div>
+
+              {formError && (
+                <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[11px] flex items-center gap-2">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{formError}</span>
+                </div>
+              )}
+
+              <div className="pt-2 border-t border-slate-800 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-3.5 py-1.5 rounded-xl text-slate-400 font-bold hover:bg-slate-800 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow-sm transition-colors disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Adding...' : 'Add Technician'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MOBILE REMOVE TECHNICIAN CONFIRMATION MODAL */}
+      {deletingTech && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-xs p-4">
+          <div className="w-full max-w-xs bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4">
+            <div className="w-11 h-11 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+
+            <div className="text-center space-y-1.5">
+              <h3 className="font-heading font-bold text-sm text-white">
+                Remove Technician?
+              </h3>
+              <p className="text-xs text-slate-400">
+                Are you sure you want to remove <strong className="text-slate-200">{deletingTech.fullName}</strong> ({deletingTech.employeeId || 'ID Pending'})? This will revoke mobile app badge access immediately.
+              </p>
+            </div>
+
+            <div className="pt-2 border-t border-slate-800 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setDeletingTech(null)}
+                className="py-2 rounded-xl text-slate-400 font-bold hover:bg-slate-800 hover:text-white transition-colors text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleConfirmDelete}
+                className="py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold shadow-sm transition-colors text-xs disabled:opacity-50"
+              >
+                {isDeleting ? 'Removing...' : 'Remove'}
+              </button>
+            </div>
           </div>
         </div>
       )}

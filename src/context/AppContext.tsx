@@ -65,6 +65,7 @@ interface AppContextType {
   updateSettings: (newSettings: Partial<SystemSettings>) => Promise<boolean>;
   createTechnician: (data: { fullName: string; email: string; employeeId: string; phoneNumber?: string; customExpectedStartTime?: string }) => Promise<boolean>;
   updateTechnician: (id: string, data: Partial<User>) => Promise<boolean>;
+  deleteTechnician: (id: string) => Promise<boolean>;
   resetDemoData: () => Promise<void>;
   exportReportsCsv: () => void;
 }
@@ -521,6 +522,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Delete Technician
+  const deleteTechnician = async (id: string) => {
+    // Optimistically update local users list
+    setAllUsers(prev => prev.filter(u => u.id !== id));
+
+    try {
+      const res = await fetch(`/api/v1/technicians/${id}`, {
+        method: 'DELETE',
+      });
+      const json = await res.json();
+      if (json.success) {
+        await refreshUsers();
+        await refreshDashboard();
+        return true;
+      }
+      return false;
+    } catch {
+      return true; // Keep optimistic deletion offline
+    }
+  };
+
   // Reset Demo Data
   const resetDemoData = async () => {
     try {
@@ -572,6 +594,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateSettings,
         createTechnician,
         updateTechnician,
+        deleteTechnician,
         resetDemoData,
         exportReportsCsv,
       }}

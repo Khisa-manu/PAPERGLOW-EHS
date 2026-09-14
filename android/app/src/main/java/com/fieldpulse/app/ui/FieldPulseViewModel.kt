@@ -32,6 +32,7 @@ class FieldPulseViewModel(application: Application) : AndroidViewModel(applicati
     private val database = FieldPulseDatabase.getDatabase(application)
     private val clockDao = database.clockRecordDao()
     private val ehsDao = database.ehsIncidentDao()
+    private val techDao = database.technicianDao()
     private val prefs = application.getSharedPreferences("spectrum_ehs_prefs", Context.MODE_PRIVATE)
 
     private val _uiState = MutableStateFlow(
@@ -46,6 +47,9 @@ class FieldPulseViewModel(application: Application) : AndroidViewModel(applicati
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val ehsIncidents: StateFlow<List<EHSIncident>> = ehsDao.getAllIncidents()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val technicians: StateFlow<List<Technician>> = techDao.getAllTechnicians()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
@@ -179,6 +183,42 @@ class FieldPulseViewModel(application: Application) : AndroidViewModel(applicati
                 )
             )
         }
+
+        val existingTechCount = techDao.getCount()
+        if (existingTechCount == 0) {
+            techDao.insertAll(Technician.SPECTRUM_TECHNICIANS)
+        }
+    }
+
+    fun addTechnician(
+        name: String,
+        employeeCode: String,
+        role: String,
+        assignedSite: String,
+        email: String,
+        pin: String = "1234",
+        isAdmin: Boolean = false
+    ) {
+        viewModelScope.launch {
+            val newTech = Technician(
+                id = "tech-" + UUID.randomUUID().toString().take(8),
+                name = name.trim(),
+                employeeCode = employeeCode.trim().uppercase(),
+                role = role.trim(),
+                assignedSite = assignedSite.trim().ifBlank { "Spectrum Facility Delta" },
+                email = email.trim(),
+                pin = pin.trim().ifBlank { "1234" },
+                isClockedIn = false,
+                isAdmin = isAdmin
+            )
+            techDao.insertTechnician(newTech)
+        }
+    }
+
+    fun removeTechnician(technicianId: String) {
+        viewModelScope.launch {
+            techDao.deleteTechnician(technicianId)
+        }
     }
 
     private fun loadSavedTechnician(): Technician {
@@ -212,7 +252,8 @@ class FieldPulseViewModel(application: Application) : AndroidViewModel(applicati
             return false
         }
 
-        val matched = Technician.SPECTRUM_TECHNICIANS.firstOrNull { tech ->
+        val currentTechList = technicians.value.ifEmpty { Technician.SPECTRUM_TECHNICIANS }
+        val matched = currentTechList.firstOrNull { tech ->
             tech.employeeCode.equals(cleanId, ignoreCase = true) ||
             tech.email.equals(cleanId, ignoreCase = true) ||
             tech.id.equals(cleanId, ignoreCase = true)

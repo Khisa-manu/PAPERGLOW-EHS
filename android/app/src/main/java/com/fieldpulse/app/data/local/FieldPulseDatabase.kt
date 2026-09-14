@@ -5,6 +5,7 @@ import androidx.room.*
 import com.fieldpulse.app.data.model.ClockRecord
 import com.fieldpulse.app.data.model.EHSIncident
 import com.fieldpulse.app.data.model.SyncStatus
+import com.fieldpulse.app.data.model.Technician
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -40,11 +41,36 @@ interface EHSIncidentDao {
     suspend fun updateIncident(incident: EHSIncident)
 }
 
-@Database(entities = [ClockRecord::class, EHSIncident::class], version = 1, exportSchema = false)
+@Dao
+interface TechnicianDao {
+    @Query("SELECT * FROM technicians ORDER BY name ASC")
+    fun getAllTechnicians(): Flow<List<Technician>>
+
+    @Query("SELECT * FROM technicians WHERE id = :id")
+    suspend fun getTechnicianById(id: String): Technician?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTechnician(technician: Technician)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(technicians: List<Technician>)
+
+    @Update
+    suspend fun updateTechnician(technician: Technician)
+
+    @Query("DELETE FROM technicians WHERE id = :id")
+    suspend fun deleteTechnician(id: String)
+
+    @Query("SELECT COUNT(*) FROM technicians")
+    suspend fun getCount(): Int
+}
+
+@Database(entities = [ClockRecord::class, EHSIncident::class, Technician::class], version = 2, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class FieldPulseDatabase : RoomDatabase() {
     abstract fun clockRecordDao(): ClockRecordDao
     abstract fun ehsIncidentDao(): EHSIncidentDao
+    abstract fun technicianDao(): TechnicianDao
 
     companion object {
         @Volatile

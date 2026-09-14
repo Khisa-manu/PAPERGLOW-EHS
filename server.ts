@@ -726,6 +726,29 @@ app.patch('/api/v1/technicians/:id', (req, res) => {
   res.json({ success: true, data: tech });
 });
 
+app.delete('/api/v1/technicians/:id', (req, res) => {
+  const { id } = req.params;
+  const index = state.users.findIndex(u => u.id === id);
+  if (index === -1) return res.status(404).json({ success: false, error: 'Technician not found' });
+
+  const removedTech = state.users[index];
+  state.users.splice(index, 1);
+
+  state.auditLogs.unshift({
+    id: `log-${Date.now()}`,
+    actorUserId: 'usr-admin-01',
+    actorName: 'Rachel Hayes',
+    action: 'TECHNICIAN_REMOVED',
+    entityType: 'TECHNICIAN',
+    entityId: removedTech.id,
+    details: { employeeId: removedTech.employeeId, fullName: removedTech.fullName },
+    ipAddress: req.ip || '127.0.0.1',
+    createdAt: new Date().toISOString(),
+  });
+
+  res.json({ success: true, message: `Technician ${removedTech.fullName} removed successfully.` });
+});
+
 // 5. Presigned URL / Media Upload
 app.post('/api/v1/photos/presign-upload', (req, res) => {
   const { photoType, clientPhotoId, mimeType } = req.body;

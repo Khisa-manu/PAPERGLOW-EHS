@@ -81,8 +81,10 @@ data class EHSIncident(
     val resolutionNotes: String = ""
 )
 
+@Entity(tableName = "technicians")
 data class Technician(
-    val id: String,
+    @PrimaryKey
+    val id: String = UUID.randomUUID().toString(),
     val name: String,
     val employeeCode: String,
     val role: String,
