@@ -58,7 +58,15 @@ data class ClockRecord(
     val shiftType: ShiftType = ShiftType.REGULAR_MORNING,
     val syncStatus: SyncStatus = SyncStatus.SYNCED,
     val notes: String = "",
-    val photoBase64: String? = null
+    val photoBase64: String? = null,
+    val ppePhoto: String? = null,
+    val toolPhoto: String? = null,
+    val vehiclePhoto: String? = null,
+    val ladderPhoto: String? = null,
+    val safetyChecksPassed: Int = 5,
+    val isCompliant: Boolean = true,
+    val isLate: Boolean = false,
+    val lateDurationMinutes: Int = 0
 )
 
 @Entity(tableName = "ehs_incidents")

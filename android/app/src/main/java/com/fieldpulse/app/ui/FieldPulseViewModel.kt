@@ -9,6 +9,7 @@ import com.fieldpulse.app.data.model.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.Calendar
 import java.util.UUID
 
 data class UIState(
@@ -18,6 +19,7 @@ data class UIState(
     val showLogoutConfirm: Boolean = false,
     val isClockedIn: Boolean = false,
     val lastClockTime: Long? = null,
+    val activeClockRecord: ClockRecord? = null,
     val isOfflineMode: Boolean = false,
     val pendingSyncCount: Int = 0,
     val currentLatitude: Double = 29.7604,
@@ -53,11 +55,22 @@ class FieldPulseViewModel(application: Application) : AndroidViewModel(applicati
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
-        // Observe pending offline sync items
+        // Observe pending offline sync items and active clock status for the current technician
         viewModelScope.launch {
             clockDao.getAllRecords().collect { records ->
                 val pending = records.count { it.syncStatus == SyncStatus.PENDING_OFFLINE }
-                _uiState.update { it.copy(pendingSyncCount = pending) }
+                val currentTechId = _uiState.value.currentTechnician.id
+                val latestForTech = records.firstOrNull { it.technicianId == currentTechId }
+                val isCurrentlyClockedIn = latestForTech?.type == "CLOCK_IN"
+
+                _uiState.update {
+                    it.copy(
+                        pendingSyncCount = pending,
+                        isClockedIn = isCurrentlyClockedIn,
+                        lastClockTime = latestForTech?.timestamp ?: it.lastClockTime,
+                        activeClockRecord = if (isCurrentlyClockedIn) latestForTech else null
+                    )
+                }
             }
         }
         // Seed demo records if database is empty so Admin dashboard is immediately actionable
@@ -354,15 +367,32 @@ class FieldPulseViewModel(application: Application) : AndroidViewModel(applicati
     fun clockIn(
         shiftType: ShiftType = ShiftType.REGULAR_MORNING,
         verificationMethod: VerificationMethod = VerificationMethod.GEO_FENCE,
-        notes: String = ""
+        notes: String = "",
+        ppePhoto: String? = null,
+        toolPhoto: String? = null,
+        vehiclePhoto: String? = null,
+        ladderPhoto: String? = null,
+        safetyChecksPassed: Int = 5,
+        isCompliant: Boolean = true,
+        customTimestamp: Long? = null
     ) {
         viewModelScope.launch {
             val state = _uiState.value
             val isOffline = state.isOfflineMode
+            val recordTime = customTimestamp ?: System.currentTimeMillis()
+
+            val cal = Calendar.getInstance()
+            cal.timeInMillis = recordTime
+            val hour = cal.get(Calendar.HOUR_OF_DAY)
+            val minute = cal.get(Calendar.MINUTE)
+            val isLate = (hour > 8) || (hour == 8 && minute > 0)
+            val lateMins = if (isLate) ((hour - 8) * 60 + minute) else 0
+
             val record = ClockRecord(
                 technicianId = state.currentTechnician.id,
                 technicianName = state.currentTechnician.name,
                 type = "CLOCK_IN",
+                timestamp = recordTime,
                 latitude = state.currentLatitude,
                 longitude = state.currentLongitude,
                 accuracyMeters = state.gpsAccuracyMeters,
@@ -371,13 +401,22 @@ class FieldPulseViewModel(application: Application) : AndroidViewModel(applicati
                 verificationMethod = verificationMethod,
                 shiftType = shiftType,
                 syncStatus = if (isOffline) SyncStatus.PENDING_OFFLINE else SyncStatus.SYNCED,
-                notes = notes
+                notes = notes,
+                ppePhoto = ppePhoto,
+                toolPhoto = toolPhoto,
+                vehiclePhoto = vehiclePhoto,
+                ladderPhoto = ladderPhoto,
+                safetyChecksPassed = safetyChecksPassed,
+                isCompliant = isCompliant,
+                isLate = isLate,
+                lateDurationMinutes = lateMins
             )
             clockDao.insertRecord(record)
             _uiState.update {
                 it.copy(
                     isClockedIn = true,
-                    lastClockTime = System.currentTimeMillis()
+                    lastClockTime = recordTime,
+                    activeClockRecord = record
                 )
             }
         }
@@ -391,6 +430,7 @@ class FieldPulseViewModel(application: Application) : AndroidViewModel(applicati
                 technicianId = state.currentTechnician.id,
                 technicianName = state.currentTechnician.name,
                 type = "CLOCK_OUT",
+                timestamp = System.currentTimeMillis(),
                 latitude = state.currentLatitude,
                 longitude = state.currentLongitude,
                 accuracyMeters = state.gpsAccuracyMeters,
@@ -403,7 +443,8 @@ class FieldPulseViewModel(application: Application) : AndroidViewModel(applicati
             _uiState.update {
                 it.copy(
                     isClockedIn = false,
-                    lastClockTime = System.currentTimeMillis()
+                    lastClockTime = System.currentTimeMillis(),
+                    activeClockRecord = null
                 )
             }
         }

@@ -65,7 +65,7 @@ interface TechnicianDao {
     suspend fun getCount(): Int
 }
 
-@Database(entities = [ClockRecord::class, EHSIncident::class, Technician::class], version = 2, exportSchema = false)
+@Database(entities = [ClockRecord::class, EHSIncident::class, Technician::class], version = 3, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class FieldPulseDatabase : RoomDatabase() {
     abstract fun clockRecordDao(): ClockRecordDao

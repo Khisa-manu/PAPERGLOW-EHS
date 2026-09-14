@@ -140,6 +140,49 @@ fun RecordsScreen(viewModel: FieldPulseViewModel) {
                                 }
                             }
                         }
+
+                        if (record.type == "CLOCK_IN") {
+                            Divider(modifier = Modifier.padding(horizontal = 14.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "4 Safety Photos Verified",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Amber500
+                                    )
+                                    Text(" • ", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(
+                                        text = "${record.safetyChecksPassed}/5 Safety Checks",
+                                        fontSize = 10.sp,
+                                        color = Emerald600,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+
+                                if (record.isLate) {
+                                    Text(
+                                        text = "LATE (${record.lateDurationMinutes}m)",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Rose600
+                                    )
+                                } else {
+                                    Text(
+                                        text = "ON TIME",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Emerald600
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
